@@ -354,6 +354,7 @@ def main():
     etag = etag_getdf()
     freeway(datatype = 'M03A', datelist = datelist, Tableau = True, etag = etag)
     freeway(datatype = 'M05A', datelist = datelist)
+    freeway(datatype = 'M06A', datelist = datelist)
 
 if __name__ == '__main__':
     main()
