@@ -7,6 +7,7 @@ import subprocess
 import shutil
 import tarfile
 import xml.etree.ElementTree as ET
+import re
 
 def create_folder(folder_name):
     """建立資料夾"""
@@ -46,7 +47,7 @@ def freewaydatafolder(datatype):
     rawdatafolder = create_folder(os.path.join(savelocation, '0_rawdata'))
     mergefolder = create_folder(os.path.join(savelocation, '1_merge'))
     excelfolder = create_folder(os.path.join(savelocation, '2_excel'))
-    return savelocation, rawdatafolder, mergefolder, excelfolder
+    return rawdatafolder, mergefolder, excelfolder
 
 def delete_folders_permanently(deletelist):
     """
@@ -161,6 +162,8 @@ def etag_getdf():
     download_etag(etagurl=etagurl, etagdownloadpath=etagdownloadpath)
     etagxml = read_xml(etagdownloadpath)
     etag = etag_xml_to_dataframe(etagxml)
+
+    etag.to_excel(os.path.join(etagfolder,'Etag.xlsx'), index = False)
     return etag
 
 def extract_tar_gz(tar_gz_file, extract_path):
@@ -239,6 +242,7 @@ def combinefile(filelist, datatype='M03A'):
         (pd.read_csv(i, header=None, names=columns) for i in filelist),  # 使用生成器表達式
         ignore_index=True  # 避免重複的索引
     )
+
     return combineddf
 
 def THI_M03A(df):
@@ -297,11 +301,27 @@ def THI_M05A(df, weighted = False):
     
     return df
 
-def THI_process(df, datatype, weighted = False):
+def THI_M06A(df, hour = True):
+    df['DetectionTimeO'] = pd.to_datetime(df['DetectionTimeO'])
+    df['DetectionTimeD'] = pd.to_datetime(df['DetectionTimeD'])
+
+    df['Date'] = df['DetectionTimeO'].dt.date
+    if hour == True:
+        df['HourO'] = df['DetectionTimeO'].dt.hour
+        df['HourD'] = df['DetectionTimeD'].dt.hour
+        df = df.groupby(['Date','HourO', 'GantryO', 'HourD', 'GantryD', 'VehicleType']).size().reset_index(name='Volume')
+
+    df = df.groupby(['Date', 'GantryO', 'GantryD','VehicleType']).size().reset_index(name='Volume')
+
+    return df 
+
+def THI_process(df, datatype, weighted = False, hour = True):
     if datatype == 'M03A':
         df = THI_M03A(df)
     elif datatype == 'M05A':
         df = THI_M05A(df, weighted = weighted)
+    elif datatype == 'M06A':
+        df = THI_M06A(df, hour = hour)
     return df
 
 def M03A_Tableau_combined(folder , etag):
@@ -316,11 +336,11 @@ def M03A_Tableau_combined(folder , etag):
     combineddf = pd.merge(combineddf,etag[['ETagGantryID', 'RoadName','Start', 'End']].rename(columns = {'ETagGantryID':'GantryID'}) , on = 'GantryID')
     combineddf['RoadSection'] = combineddf['Start'] + '-' + combineddf['End']
 
-    outputfolder = create_folder(os.path.join(folder, '..', '03_TableauData'))
+    outputfolder = create_folder(os.path.join(folder, '..', '3_TableauData'))
     combineddf.to_csv(os.path.join(outputfolder, 'M03A.csv'), index=False)
 
-def freeway(datatype, datelist, Tableau = False, etag = None):
-    savelocation, rawdatafolder, mergefolder, excelfolder = freewaydatafolder(datatype=datatype)
+def freeway(datatype, datelist, Tableau = False, etag = None, hour = True):
+    rawdatafolder, mergefolder, excelfolder = freewaydatafolder(datatype=datatype)
     url = "https://tisvcloud.freeway.gov.tw/history/TDCS/" + datatype
 
     for date in datelist :
@@ -334,13 +354,16 @@ def freeway(datatype, datelist, Tableau = False, etag = None):
         df.to_csv(os.path.join(mergeoutputfolder, f'{date}.csv') , index = False) # 輸出整併過的csv
         delete_folders([dowloadfilefolder]) #回頭刪除解壓縮過的資料
 
-        # 3. 處理
-        df = THI_process(df, datatype=datatype)
-        df.to_excel(os.path.join(excelfolder, f'{date}.xlsx'), index = False, sheet_name = date)
+        # # 3. 處理
+        # df = THI_process(df, datatype=datatype)
+        # df.to_excel(os.path.join(excelfolder, f'{date}.xlsx'), index = False, sheet_name = date)
     
     if Tableau == True:
         if datatype == 'M03A':
             M03A_Tableau_combined(folder=excelfolder, etag = etag)
+
+    return df
+
 # ===== Step 0: 手動需要調整的參數 =====
 
 # 調整下載的資料區間
@@ -348,13 +371,22 @@ starttime = "2024-09-10"
 endtime = "2024-09-10"
 datelist = getdatelist(endtime,starttime) # 下載的時間區間清單
 
-# 執行程式碼
+# ===== Step 1: 選擇需要執行的程式碼 ====
 
 def main():
+    '''主要會用freeway這個函數進行三個步驟 (1) 下載 (2) 整併當日資料 (3) 處理
+    請根據需要調整datatype(str)
+
+    1. M03A : 主要計算主要路段通過門架的通過量
+    2. M05A : 計算通過兩個門架間的速率
+    3. M06A : 計算通過兩個門架之間的OD數量
+    '''
+
     etag = etag_getdf()
-    freeway(datatype = 'M03A', datelist = datelist, Tableau = True, etag = etag)
+    
+    freeway(datatype = 'M03A', datelist = datelist) 
     freeway(datatype = 'M05A', datelist = datelist)
-    freeway(datatype = 'M06A', datelist = datelist)
+    freeway(datatype = 'M06A', datelist = datelist, hour = True) # 計算OD:如果只是要全日的OD，就可以把"hour = True" 改為 "hour = False"
 
 if __name__ == '__main__':
     main()
