@@ -188,15 +188,13 @@ def download_and_extract(url, datatype, date, downloadfolder, keep = False):
         if keep == False:
             os.remove(destfile)
     else:
-        hourlist = [f"{i:02d}" for i in range(0, 60, 5)]
+        extractpath = create_folder(os.path.join(downloadfolder, date))
+        hourlist = [f"{i:02d}" for i in range(24)]
         if datatype == 'M06A':
             for hour in hourlist:
                 downloadurl = f"{url}/{date}/{hour}/TDCS_{datatype}_{date}_{hour}0000.csv"
-                downloaddatefolder = create_folder(os.path.join(downloadfolder,date))
-                destfile = os.path.join(downloaddatefolder, f"TDCS_{datatype}_{date}_{hour}0000.csv")
-
+                destfile = os.path.join(extractpath, f"TDCS_{datatype}_{date}_{hour}0000.csv")
                 response = requests.get(downloadurl, stream=True) # 發送 GET 請求下載檔案
-                
                 if response.status_code == 200:
                     with open(destfile, 'wb') as file:
                         file.write(response.content)  # 直接寫入整個回應內容
@@ -205,17 +203,18 @@ def download_and_extract(url, datatype, date, downloadfolder, keep = False):
 
         else :
             for hour in hourlist:
-                downloadurl = f"{url}/{date}/{hour}/TDCS_{datatype}_{date}_{hour}{min}00.csv"
-                downloaddatefolder = create_folder(os.path.join(downloadfolder,date))
-                destfile = os.path.join(downloaddatefolder, f"TDCS_{datatype}_{date}_{hour}{min}00.csv")
+                minlist = [f"{i:02d}" for i in range(0, 60, 5)]
+                for minute in minlist:
+                    downloadurl = f"{url}/{date}/{hour}/TDCS_{datatype}_{date}_{hour}{minute}00.csv"
+                    destfile = os.path.join(extractpath, f"TDCS_{datatype}_{date}_{hour}{minute}00.csv")
 
-                response = requests.get(downloadurl, stream=True) # 發送 GET 請求下載檔案
-                
-                if response.status_code == 200:
-                    with open(destfile, 'wb') as file:
-                        file.write(response.content)  # 直接寫入整個回應內容
-                else:
-                    print(f"下載失敗: {downloadurl}, 狀態碼: {response.status_code}")
+                    response = requests.get(downloadurl, stream=True) # 發送 GET 請求下載檔案
+                    
+                    if response.status_code == 200:
+                        with open(destfile, 'wb') as file:
+                            file.write(response.content)  # 直接寫入整個回應內容
+                    else:
+                        print(f"下載失敗: {downloadurl}, 狀態碼: {response.status_code}")
 
     return extractpath
 
@@ -409,8 +408,8 @@ def freeway(datatype, datelist, Tableau = False, etag = None, hour = True, keep 
 # ===== Step 0: 手動需要調整的參數 =====
 
 # 調整下載的資料區間
-starttime = "2024-01-24"
-endtime = "2024-01-25"
+starttime = "2025-01-24"
+endtime = "2025-02-4"
 datelist = getdatelist(endtime,starttime) # 下載的時間區間清單
 
 # ===== Step 1: 選擇需要執行的程式碼 ====
@@ -425,8 +424,8 @@ def main():
     '''
 
     etag = etag_getdf()
-    
-    freeway(datatype = 'M03A', datelist = datelist, keep=False, Tableau = True, etag = etag) 
+    freeway(datatype = 'M06A', datelist = datelist) 
+    # freeway(datatype = 'M03A', datelist = datelist, keep=False, Tableau = True, etag = etag) 
     # freeway(datatype = 'M05A', datelist = datelist)
     # freeway(datatype = 'M06A', datelist = datelist, hour = True) # 計算OD:如果只是要全日的OD，就可以把"hour = True" 改為 "hour = False"
     # freeway(datatype = 'M08A', datelist = datelist)
