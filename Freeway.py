@@ -179,13 +179,43 @@ def download_and_extract(url, datatype, date, downloadfolder, keep = False):
     destfile = os.path.join(downloadfolder, f"{datatype}_{date}.tar.gz")
 
     response = requests.get(downloadurl)
-    with open(destfile, 'wb') as file:
-        file.write(response.content)
+    
+    if response.status_code == 200:
+        with open(destfile, 'wb') as file:
+            file.write(response.content)
+        extractpath = create_folder(os.path.join(downloadfolder, date))
+        extract_tar_gz(destfile, extractpath)
+        if keep == False:
+            os.remove(destfile)
+    else:
+        hourlist = [f"{i:02d}" for i in range(0, 60, 5)]
+        if datatype == 'M06A':
+            for hour in hourlist:
+                downloadurl = f"{url}/{date}/{hour}/TDCS_{datatype}_{date}_{hour}0000.csv"
+                downloaddatefolder = create_folder(os.path.join(downloadfolder,date))
+                destfile = os.path.join(downloaddatefolder, f"TDCS_{datatype}_{date}_{hour}0000.csv")
 
-    extractpath = create_folder(os.path.join(downloadfolder, date))
-    extract_tar_gz(destfile, extractpath)
-    if keep == False:
-        os.remove(destfile)
+                response = requests.get(downloadurl, stream=True) # 發送 GET 請求下載檔案
+                
+                if response.status_code == 200:
+                    with open(destfile, 'wb') as file:
+                        file.write(response.content)  # 直接寫入整個回應內容
+                else:
+                    print(f"下載失敗: {downloadurl}, 狀態碼: {response.status_code}")
+
+        else :
+            for hour in hourlist:
+                downloadurl = f"{url}/{date}/{hour}/TDCS_{datatype}_{date}_{hour}{min}00.csv"
+                downloaddatefolder = create_folder(os.path.join(downloadfolder,date))
+                destfile = os.path.join(downloaddatefolder, f"TDCS_{datatype}_{date}_{hour}{min}00.csv")
+
+                response = requests.get(downloadurl, stream=True) # 發送 GET 請求下載檔案
+                
+                if response.status_code == 200:
+                    with open(destfile, 'wb') as file:
+                        file.write(response.content)  # 直接寫入整個回應內容
+                else:
+                    print(f"下載失敗: {downloadurl}, 狀態碼: {response.status_code}")
 
     return extractpath
 
@@ -339,13 +369,13 @@ def M03A_Tableau_combined(folder , etag):
     outputfolder = create_folder(os.path.join(folder, '..', '3_TableauData'))
     combineddf.to_csv(os.path.join(outputfolder, 'M03A.csv'), index=False)
 
-def freeway(datatype, datelist, Tableau = False, etag = None, hour = True):
+def freeway(datatype, datelist, Tableau = False, etag = None, hour = True, keep = False):
     rawdatafolder, mergefolder, excelfolder = freewaydatafolder(datatype=datatype)
     url = "https://tisvcloud.freeway.gov.tw/history/TDCS/" + datatype
 
     for date in datelist :
         # 1. 下載並解壓縮
-        dowloadfilefolder = download_and_extract(url = url, datatype = datatype, date = date, downloadfolder = rawdatafolder)
+        dowloadfilefolder = download_and_extract(url = url, datatype = datatype, date = date, downloadfolder = rawdatafolder, keep = False)
 
         # 2. 合併
         filelist = findfiles(filefolderpath=dowloadfilefolder, filetype='.csv')
@@ -355,8 +385,8 @@ def freeway(datatype, datelist, Tableau = False, etag = None, hour = True):
         delete_folders([dowloadfilefolder]) #回頭刪除解壓縮過的資料
 
         # # 3. 處理
-        # df = THI_process(df, datatype=datatype)
-        # df.to_excel(os.path.join(excelfolder, f'{date}.xlsx'), index = False, sheet_name = date)
+        df = THI_process(df, datatype=datatype)
+        df.to_excel(os.path.join(excelfolder, f'{date}.xlsx'), index = False, sheet_name = date)
     
     if Tableau == True:
         if datatype == 'M03A':
@@ -365,10 +395,9 @@ def freeway(datatype, datelist, Tableau = False, etag = None, hour = True):
     return df
 
 # ===== Step 0: 手動需要調整的參數 =====
-
 # 調整下載的資料區間
-starttime = "2024-09-10"
-endtime = "2024-09-10"
+starttime = "2024-01-24"
+endtime = "2024-02-09"
 datelist = getdatelist(endtime,starttime) # 下載的時間區間清單
 
 # ===== Step 1: 選擇需要執行的程式碼 ====
@@ -384,9 +413,9 @@ def main():
 
     etag = etag_getdf()
     
-    freeway(datatype = 'M03A', datelist = datelist) 
-    freeway(datatype = 'M05A', datelist = datelist)
-    freeway(datatype = 'M06A', datelist = datelist, hour = True) # 計算OD:如果只是要全日的OD，就可以把"hour = True" 改為 "hour = False"
+    freeway(datatype = 'M03A', datelist = datelist, keep=False, Tableau = True, etag = etag) 
+    # freeway(datatype = 'M05A', datelist = datelist)
+    # freeway(datatype = 'M06A', datelist = datelist, hour = True) # 計算OD:如果只是要全日的OD，就可以把"hour = True" 改為 "hour = False"
 
 if __name__ == '__main__':
     main()
