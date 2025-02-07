@@ -163,7 +163,7 @@ def etag_getdf():
     etagxml = read_xml(etagdownloadpath)
     etag = etag_xml_to_dataframe(etagxml)
 
-    etag.to_excel(os.path.join(etagfolder,'Etag.xlsx'), index = False)
+    etag.to_excel(os.path.join(etagfolder,'Etag.xlsx'), index = False, sheet_name='ETag')
     return etag
 
 def extract_tar_gz(tar_gz_file, extract_path):
@@ -407,6 +407,7 @@ def freeway(datatype, datelist, Tableau = False, etag = None, hour = True, keep 
     return df
 
 # ===== Step 0: 手動需要調整的參數 =====
+
 # 調整下載的資料區間
 starttime = "2024-01-24"
 endtime = "2024-01-25"
@@ -425,9 +426,9 @@ def main():
 
     etag = etag_getdf()
     
-    # freeway(datatype = 'M03A', datelist = datelist, keep=False, Tableau = True, etag = etag) 
+    freeway(datatype = 'M03A', datelist = datelist, keep=False, Tableau = True, etag = etag) 
     # freeway(datatype = 'M05A', datelist = datelist)
     # freeway(datatype = 'M06A', datelist = datelist, hour = True) # 計算OD:如果只是要全日的OD，就可以把"hour = True" 改為 "hour = False"
-    freeway(datatype = 'M08A', datelist = datelist)
+    # freeway(datatype = 'M08A', datelist = datelist)
 if __name__ == '__main__':
     main()
