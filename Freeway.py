@@ -345,13 +345,25 @@ def THI_M06A(df, hour = True):
 
     return df 
 
+def THI_M08A(df, hour = True):
+    df['TimeStamp'] = pd.to_datetime(df['TimeStamp'])
+
+    df['Date'] = df['TimeStamp'].dt.date
+    df['Hour'] = df['TimeStamp'].dt.hour
+    if hour == True:
+        df = df.groupby(['Date', 'Hour', 'GantryO', 'GantryD', 'VehicleType']).size().reset_index(name='Volume')
+    df = df.groupby(['Date', 'GantryO', 'GantryD','VehicleType']).size().reset_index(name='Volume')
+    return df 
+
 def THI_process(df, datatype, weighted = False, hour = True):
     if datatype == 'M03A':
         df = THI_M03A(df)
     elif datatype == 'M05A':
         df = THI_M05A(df, weighted = weighted)
     elif datatype == 'M06A':
-        df = THI_M06A(df, hour = hour)
+        df = THI_M06A(df, hour = False)
+    elif datatype == 'M08A':
+        df = THI_M08A(df, hour = True)
     return df
 
 def M03A_Tableau_combined(folder , etag):
@@ -397,7 +409,7 @@ def freeway(datatype, datelist, Tableau = False, etag = None, hour = True, keep 
 # ===== Step 0: 手動需要調整的參數 =====
 # 調整下載的資料區間
 starttime = "2024-01-24"
-endtime = "2024-02-09"
+endtime = "2024-01-25"
 datelist = getdatelist(endtime,starttime) # 下載的時間區間清單
 
 # ===== Step 1: 選擇需要執行的程式碼 ====
@@ -413,9 +425,9 @@ def main():
 
     etag = etag_getdf()
     
-    freeway(datatype = 'M03A', datelist = datelist, keep=False, Tableau = True, etag = etag) 
+    # freeway(datatype = 'M03A', datelist = datelist, keep=False, Tableau = True, etag = etag) 
     # freeway(datatype = 'M05A', datelist = datelist)
     # freeway(datatype = 'M06A', datelist = datelist, hour = True) # 計算OD:如果只是要全日的OD，就可以把"hour = True" 改為 "hour = False"
-
+    freeway(datatype = 'M08A', datelist = datelist)
 if __name__ == '__main__':
     main()
