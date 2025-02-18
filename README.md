@@ -12,7 +12,7 @@ project_name/
 ├── Input/  
 │   ├──   
 │   ├── ETag匝道選擇.xlsx # 手動篩選M06A，需要篩選的交流道和門架  
-│   └── ETC_M03A_202304_容量.xlsx # 目前計算出的高速公路各路段容量  
+│   └── ETC_M03A_202304_容量.xlsx # 目前計算出的高速公路各路段容量 ，為匯入Tableau儀表板的資料
 ├── Input/  
 │   └── Freeway.twb # 匯入output資料可以產生關連性資料，可以把資料匯入進行道路服務水準的估算  
 ├── requirements.txt # 用於安裝依賴包的列表  
