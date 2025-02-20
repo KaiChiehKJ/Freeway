@@ -425,7 +425,7 @@ def THI_M06A_step2(df, ramp):
 
         # 篩選有經過 PassGantryID 但沒有 UnpassGantryID 的車輛
         matched_df = df[df["GantryID_list"].apply(lambda x: pass_id in x and unpass_id not in x)]
-        matched_df = df[df['GantryID'] == pass_id]
+        matched_df = matched_df[matched_df['GantryID'] == pass_id]
 
         # 統計不同 VehicleType 在各時段的數量
         summary = matched_df.groupby(["DetectionDate","DetectionHour", "VehicleType"])["index"].nunique().reset_index(name="Count")
