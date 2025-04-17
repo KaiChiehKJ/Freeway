@@ -443,6 +443,29 @@ def THI_M06A_step2(df, ramp):
     final_df = pd.concat(results, ignore_index=True)
     return final_df
 
+def THI_M06A_step3(final_df):
+    final_df = final_df.pivot_table(index=['DetectionDate', 'DetectionHour', 'Ramp', 'Direction', 'PassGantryID', 'UnpassGantryID'], 
+                                    columns='VehicleType',
+                                    values='Count',
+                                    aggfunc='sum',  # 如果有重複的組合，進行加總
+                                    fill_value=0     # 填充缺失值為 0
+                                    ).reset_index()
+    final_df['PCU'] = final_df[5] * 3 + final_df[31]*1 + final_df[32] *1 + final_df[41] * 1.8 + final_df[42] * 1.8
+    final_df = final_df.groupby(['DetectionDate',  'DetectionHour', 'Ramp', 'Direction', 'PassGantryID', 'UnpassGantryID']).agg({5:'sum', 31:'sum', 32 : 'sum',  41:'sum', 42 :'sum',  'PCU':'sum'}).reset_index()
+    final_df = final_df.rename(columns = {
+        5 : 'Vol_Trail',
+        31 : 'Vol_Car',
+        32 : 'Vol_Truck',
+        41 : 'Vol_TourBus',
+        42 : 'Vol_BTruck'
+    })
+    final_df["Ramp&Dir"] = final_df["Ramp"] + "(" + final_df["Direction"] + ")"
+    final_df['Volume'] = final_df['Vol_Trail'] + final_df['Vol_Car'] + final_df['Vol_BTruck']+ final_df['Vol_TourBus'] + final_df['Vol_Truck']
+
+    final_df = final_df.reindex(columns = ['DetectionDate', 'DetectionHour', 'Ramp&Dir','Ramp', 'Direction', 'PassGantryID', 'UnpassGantryID', 'Vol_Trail', 'Vol_BTruck', 'Vol_TourBus', 'Vol_Car', 'Vol_Truck', 'Volume','PCU'])
+
+    return final_df
+
 def THI_M06A(df):
     df = THI_M06A_step1(df)
 
@@ -452,6 +475,7 @@ def THI_M06A(df):
     ramp = ramp.sort_values(['Ramp', 'Direction'], ascending=[True, False]).reset_index(drop = True)
 
     outputdf = THI_M06A_step2(df = df , ramp = ramp)
+    outputdf = THI_M06A_step3(outputdf)
     return outputdf
 
 
